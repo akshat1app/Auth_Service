@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+      "module": "CommonJS",
+      "target": "ES2021",
+      "lib": ["ES2021"],
+      "moduleResolution": "node",
+      "sourceMap": true,
+      "outDir": "./dist",
+      "rootDir": "./src",
+      "experimentalDecorators": true,
+      "emitDecoratorMetadata": true,
+      "strict": true,
+      "noImplicitAny": true,
+      "esModuleInterop": true,
+      "resolveJsonModule": true,
+      "skipLibCheck": true
+    },
+    "include": ["src/**/*",
+    "proto/**/*.proto" 
+    ],
+    "exclude": ["node_modules", "dist"]
+  }
+  
