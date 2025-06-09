@@ -38,8 +38,8 @@ interface ValidateTokenResponse {
       email: string;
       role: string;
       deviceId?: string;
-      // ipAddress?: string;
-      // userAgent?: string;
+      //  ipAddress?: string;
+      //  userAgent?: string;
     }) {
       try {
       const access_token = this.jwtService.sign(payload,  {
@@ -111,6 +111,7 @@ async validateToken( accessToken: string ): Promise<ValidateTokenResponse> {
     throw new RpcException('Invalid or expired token');
   }
 }
+
 
     
 

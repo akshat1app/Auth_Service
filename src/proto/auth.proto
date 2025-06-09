@@ -3,18 +3,20 @@ syntax = "proto3";
 package auth;
 
 service AuthService {
-  rpc GenerateToken (GenerateTokenRequest) returns (TokenResponse);
-  rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc GenerateToken (TokenPayload) returns (TokenResponse);
+  rpc ValidateToken (TokenValidationRequest) returns (UserPayload);
   rpc Logout (LogoutRequest) returns (LogoutResponse);
   rpc GoogleSignup (GoogleSignupRequest) returns (GoogleSignupResponse);
   rpc RegenerateAccessToken(RegenerateAccessTokenRequest) returns (RegenerateAccessTokenResponse);
 }
 
-message GenerateTokenRequest {
+message TokenPayload {
   string userId = 1;
   string email = 2;
   string role = 3;
   string deviceId = 4;
+  string ipAddress = 5;
+  string userAgent = 6;
 }
 
 message TokenResponse {
@@ -22,11 +24,11 @@ message TokenResponse {
   string refresh_token = 2;
 }
 
-message ValidateTokenRequest {
-  string accessToken = 1;
+message TokenValidationRequest {
+  string access_token = 1;
 }
 
-message ValidateTokenResponse {
+message UserPayload {
   string userId = 1;
   string email = 2;
   string role = 3;
