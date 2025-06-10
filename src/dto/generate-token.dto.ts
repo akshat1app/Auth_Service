@@ -3,8 +3,8 @@ export class GenerateTokenDto {
     email!: string;
     role!: string;
     deviceId?: string;
-    // ipAddress?: string;
-    // userAgent?: string;
+    ipAddress?: string;
+    userAgent?: string;
 }
 
   

@@ -16,11 +16,11 @@ export class UserSession extends Document {
   @Prop({ default: 'active' }) 
   status!: string;
 
-  // @Prop()
-  // ipAddress?: string;
+  @Prop()
+  ipAddress?: string;
 
-  // @Prop()
-  // userAgent?: string;
+  @Prop()
+  userAgent?: string;
 }
 
 export const UserSessionSchema = SchemaFactory.createForClass(UserSession);

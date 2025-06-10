@@ -1,4 +1,4 @@
-  import { Injectable ,UnauthorizedException } from "@nestjs/common";
+import { Injectable ,UnauthorizedException } from "@nestjs/common";
   import { JwtService } from "@nestjs/jwt";
   import { Model, Types } from "mongoose";
   import { UserSession } from "./schema/user-session.schema";
@@ -38,12 +38,13 @@ interface ValidateTokenResponse {
       email: string;
       role: string;
       deviceId?: string;
-      //  ipAddress?: string;
-      //  userAgent?: string;
+       ipAddress?: string;
+       userAgent?: string;
     }) {
       try {
+        console.log(payload)
       const access_token = this.jwtService.sign(payload,  {
-        expiresIn: "15m",
+        expiresIn: "50m",
         subject: payload.userId,
       });
 
@@ -77,26 +78,47 @@ interface ValidateTokenResponse {
 
 
    
-async validateToken( accessToken: string ): Promise<ValidateTokenResponse> {
+async validateToken(request: { access_token: string }): Promise<ValidateTokenResponse> {
   try {
-    //const token = accessToken.replace('Bearer ', '');
-    const decoded = this.jwtService.verify(accessToken,{secret:process.env.JWT_SECRET});
+    console.log('Validating token:', request.access_token);
+    
+    // Remove Bearer prefix if present
+    const token = request.access_token.startsWith('Bearer ') ? request.access_token.slice(7) : request.access_token;
+    
+    const decoded = this.jwtService.verify(token, {secret: process.env.JWT_SECRET});
+    console.log('Token decoded successfully:', decoded);
+    console.log('Decoded token payload:', {
+      userId: decoded.userId,
+      deviceId: decoded.deviceId,
+      email: decoded.email,
+      role: decoded.role
+    });
+    
     const userId = decoded.userId;
     const deviceId = decoded.deviceId;   
 
     if (!userId || !deviceId) {
-      throw new RpcException('Missing userId or deviceId in token');
+      console.error('Token validation failed: Missing userId or deviceId', { userId, deviceId });
+      throw new RpcException({
+        code: status.INVALID_ARGUMENT,
+        message: 'Missing userId or deviceId in token'
+      });
     }
-    console.log(userId, deviceId);
 
     const session = await this.sessionModel.findOne({
-      userId ,
+      userId,
       deviceId,
       status: 'active',
     });
 
+    console.log('Found session:', session);
+
     if (!session) {
-      throw new RpcException('Session inactive or device mismatch');
+      console.error('Token validation failed: No active session found', { userId, deviceId });
+      throw new RpcException({
+        code: status.UNAUTHENTICATED,
+        message: 'Session inactive or device mismatch'
+      });
     }
 
     return {
@@ -107,8 +129,14 @@ async validateToken( accessToken: string ): Promise<ValidateTokenResponse> {
       expiresAt: decoded.exp       
     };
   } catch (err) {
-    console.error('Token verification failed:', err);
-    throw new RpcException('Invalid or expired token');
+    console.error('Token validation failed:', err);
+    if (err instanceof RpcException) {
+      throw err;
+    }
+    throw new RpcException({
+      code: status.UNAUTHENTICATED,
+      message: 'Invalid or expired token'
+    });
   }
 }
 

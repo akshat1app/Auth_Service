@@ -12,6 +12,7 @@ export class AuthController {
 
   @GrpcMethod('AuthService', 'GenerateToken')
   async generateToken(data: GenerateTokenDto) {
+    // console.log(data);
     const result = await this.authService.generateToken(data);
     return {
       access_token: result.access_token,
@@ -19,16 +20,15 @@ export class AuthController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
   @GrpcMethod('AuthService', 'ValidateToken')
-  validateToken(data: { accessToken?: string }) {
-     const accessToken=data.accessToken;
-  if (!accessToken) {
-    throw new RpcException('Access token is missing');
-  }
+  validateToken(data: { access_token?: string }) {
+     const access_token = data.access_token;
+     if (!access_token) {
+       throw new RpcException('Access token is missing');
+     }
 
-  return this.authService.validateToken( accessToken );
-}
+     return this.authService.validateToken({ access_token });
+  }
 
 
   @GrpcMethod('AuthService', 'Logout')

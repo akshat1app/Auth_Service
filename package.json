@@ -20,7 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@grpc/grpc-js": "^1.13.3",
+    "@grpc/grpc-js": "^1.13.4",
     "@nestjs-modules/ioredis": "^2.0.2",
     "@nestjs/config": "^4.0.2",
     "@nestjs/jwt": "^11.0.0",
@@ -29,6 +29,8 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/testing": "^11.1.0",
     "@types/mocha": "^10.0.10",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
     "dotenv": "^16.5.0",
     "google-auth-library": "^9.15.1",
     "ioredis": "^5.6.1",
@@ -40,6 +42,8 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/bcryptjs": "^3.0.0",
     "@types/jest": "^29.5.14",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/passport-jwt": "^4.0.1",
