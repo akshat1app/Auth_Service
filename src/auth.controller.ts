@@ -56,7 +56,7 @@ async logout(data: { userId: string , deviceId: string}) {
     const accessToken = await this.authService.regenerateAccessToken({ 
       userId, 
       refreshToken, 
-      deviceId: deviceId ?? ''  // ensure string type
+      deviceId: deviceId ?? ''  
     });
     return { access_token: accessToken };
   }

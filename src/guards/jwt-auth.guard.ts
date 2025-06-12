@@ -20,9 +20,9 @@ import { JwtService } from '@nestjs/jwt';
     async canActivate(context: ExecutionContext): Promise<boolean> {
       const rpcContext = context.switchToRpc();
       const data = rpcContext.getData();
-       //console.log(data)
+       
       const accessToken = data?.accessToken;
-      //console.log(accessToken)
+     
   
       if (!accessToken) {
         throw new RpcException(
