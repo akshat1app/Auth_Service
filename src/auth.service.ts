@@ -74,7 +74,7 @@ export class AuthService {
     else if(payload.role=='admin'){
       await this.sessionModel.create({
         refreshToken: refresh_token,
-        adminId: payload.userId,
+        userId: payload.userId,
         deviceId: payload.deviceId,
         status: 'active',
         fcmToken: payload.fcmToken,
