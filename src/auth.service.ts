@@ -38,8 +38,10 @@ interface ValidateTokenResponse {
       email: string;
       role: string;
       deviceId?: string;
-       ipAddress?: string;
-       userAgent?: string;
+      ipAddress?: string;
+      userAgent?: string;
+      fcmToken?: string;
+
     }) {
       try {
         console.log(payload)
@@ -58,7 +60,8 @@ interface ValidateTokenResponse {
         refreshToken:refresh_token,
         userId: payload.userId,
         deviceId:payload.deviceId,
-        status: 'active'
+        status: 'active',
+        fcmToken: payload.fcmToken,
       });
       
       await this.redisService.set(
@@ -82,7 +85,7 @@ async validateToken(request: { access_token: string }): Promise<ValidateTokenRes
   try {
     console.log('Validating token:', request.access_token);
     
-    // Remove Bearer prefix if present
+    
     const token = request.access_token.startsWith('Bearer ') ? request.access_token.slice(7) : request.access_token;
     
     const decoded = this.jwtService.verify(token, {secret: process.env.JWT_SECRET});
@@ -109,6 +112,9 @@ async validateToken(request: { access_token: string }): Promise<ValidateTokenRes
       userId,
       deviceId,
       status: 'active',
+    
+      
+      
     });
 
     console.log('Found session:', session);
@@ -143,12 +149,13 @@ async validateToken(request: { access_token: string }): Promise<ValidateTokenRes
 
     
 
-    async saveUserSession(userId: string, refreshToken: string,deviceId:string) {
+    async saveUserSession(userId: string, refreshToken: string,deviceId:string,fcmToken?: string) {
       const session = new this.sessionModel({
         userId,
         refreshToken,
         deviceId,
         status: 'active', 
+        fcmToken,
       });
                                            
       await session.save(); 

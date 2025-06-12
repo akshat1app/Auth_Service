@@ -12,7 +12,7 @@ export class AuthController {
 
   @GrpcMethod('AuthService', 'GenerateToken')
   async generateToken(data: GenerateTokenDto) {
-    // console.log(data);
+  
     const result = await this.authService.generateToken(data);
     return {
       access_token: result.access_token,

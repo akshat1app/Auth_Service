@@ -21,6 +21,9 @@ export class UserSession extends Document {
 
   @Prop()
   userAgent?: string;
+  
+  @Prop()
+  fcmToken?: string;
 }
 
 export const UserSessionSchema = SchemaFactory.createForClass(UserSession);
