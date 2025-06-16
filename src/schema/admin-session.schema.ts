@@ -2,33 +2,29 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
-export class Admin extends Document {
-  @Prop({ required: true, type: String })
-  adminId?:string;
+export class AdminSession extends Document {
+  @Prop({ type:String ,required: true })
+  adminId?: string;
+ 
 
-
-  @Prop({ required: true, unique: true })
-  email!: string;
-
-  // @Prop({ required: true })
-  // password!: string;
-
-  @Prop({ default: 'admin' })
-  role!: string;
-
-  @Prop()
-  name?: string;
+  @Prop({ required: true })
+  refreshToken?: string;
 
   @Prop()
   deviceId?: string; 
-
-    @Prop()
-    ipAddress?: string;
   
+  @Prop({ default: 'active' }) 
+  status!: string;
 
+  @Prop()
+  ipAddress?: string;
+
+  @Prop()
+  userAgent?: string;
+  
   @Prop()
   fcmToken?: string;
 }
 
-export const AdminSchema = SchemaFactory.createForClass(Admin);
+export const AdminSchema = SchemaFactory.createForClass(AdminSession);
 

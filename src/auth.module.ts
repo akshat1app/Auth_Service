@@ -11,7 +11,7 @@ import { ConfigModule } from '@nestjs/config';
 import {RedisModule} from './redis/redis.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
-import {Admin,AdminSchema} from './schema/admin-session.schema';
+import {AdminSession,AdminSchema} from './schema/admin-session.schema';
 @Module({
   imports: [    
     RedisModule,
@@ -23,7 +23,7 @@ import {Admin,AdminSchema} from './schema/admin-session.schema';
       signOptions: { expiresIn: '15m' },
     }),
     MongooseModule.forFeature([{ name: UserSession.name, schema: UserSessionSchema },
-      { name: Admin.name, schema: AdminSchema }, ]),
+      { name: AdminSession.name, schema: AdminSchema }, ]),
     
   ],
   controllers: [AuthController],

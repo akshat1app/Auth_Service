@@ -6,7 +6,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { OAuth2Client } from 'google-auth-library';
 import { RedisService } from "./redis/redis.service";
 import { RpcException } from "@nestjs/microservices";
-import { Admin } from "./schema/admin-session.schema";
+import { AdminSession } from "./schema/admin-session.schema";
 import { v4 as uuidv4 } from 'uuid';
 import { status } from '@grpc/grpc-js';
 
@@ -27,7 +27,7 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly redisService: RedisService,
     @InjectModel(UserSession.name) private sessionModel: Model<UserSession>,
-    @InjectModel(Admin.name) private adminModel: Model<Admin>
+    @InjectModel(AdminSession.name) private AdminSessionModel: Model<AdminSession>
   ) {
     this.oauth2Client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
   }
@@ -45,7 +45,7 @@ export class AuthService {
     try {
       console.log(payload)
       const access_token = this.jwtService.sign(payload, {
-        expiresIn: "50m",
+        expiresIn: "1d",
         subject: payload.userId,
       });
 
@@ -56,37 +56,45 @@ export class AuthService {
       });
       console.log(access_token, refresh_token);
 
-      if(payload.role=='user'){
-      await this.adminModel.create({
-        refreshToken: refresh_token,
-        userId: payload.userId,
-        deviceId: payload.deviceId,
-        status: 'active',
-        fcmToken: payload.fcmToken,
-      });
+      if (payload.role == 'user') {
+        const alreadyLoggedIn = await this.sessionModel.find({userId: payload.userId, deviceId: payload.deviceId, status:'active'})
+        if(!alreadyLoggedIn){
+          await this.sessionModel.create({
+            refreshToken: refresh_token,
+            userId: payload.userId,
+            deviceId: payload.deviceId,
+            status: 'active',
+            fcmToken: payload.fcmToken,
+          });
+        }
+        
 
-      await this.redisService.set(
-        `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
-        access_token,
-        900,
-      );
-    }
-    else if(payload.role=='admin'){
-      await this.sessionModel.create({
-        refreshToken: refresh_token,
-        userId: payload.userId,
-        deviceId: payload.deviceId,
-        status: 'active',
-        fcmToken: payload.fcmToken,
+        await this.redisService.set(
+          `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
+          access_token,
+          24*60*60*1000,
+        );
+      }
+      else if (payload.role == 'admin') {
+        const alreadyLoggedIn = await this.AdminSessionModel.find({ userId: payload.userId, deviceId: payload.deviceId, status: 'active' })
+        if (!alreadyLoggedIn) {
+          await this.AdminSessionModel.create({
+            refreshToken: refresh_token,
+            adminId: payload.userId,
+            deviceId: payload.deviceId,
+            status: 'active',
+            fcmToken: payload.fcmToken,
 
-      });
+          });
+        }
 
-      await this.redisService.set(
-        `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
-        access_token,
-        900,
-      );
-  }
+
+        await this.redisService.set(
+          `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
+          access_token,
+          24*60*60*1000,
+        );
+      }
 
       const response = { access_token, refresh_token };
       console.log(response)
@@ -128,7 +136,7 @@ export class AuthService {
 
       const redisKey = `access_token:${decoded.role}:${userId}:${deviceId}`;
       const storedToken = await this.redisService.get(redisKey);
-  
+
       if (!storedToken) {
         console.error('Token not found in Redis. Possibly expired or logged out.', { redisKey });
         throw new RpcException({
@@ -136,7 +144,7 @@ export class AuthService {
           message: 'Access token not active or expired (Redis)',
         });
       }
-  
+
       if (storedToken !== token) {
         console.error('Access token mismatch in Redis', { expected: storedToken, got: token });
         throw new RpcException({
@@ -188,6 +196,7 @@ export class AuthService {
 
 
 
+
   async saveUserSession(userId: string, refreshToken: string, deviceId: string, fcmToken?: string) {
     const session = new this.sessionModel({
       userId,
@@ -230,7 +239,7 @@ export class AuthService {
           deviceId,
         },
         {
-          expiresIn: '15m',
+          expiresIn: '1d',
           subject: userId,
         }
       );
@@ -238,7 +247,7 @@ export class AuthService {
       await this.redisService.set(
         `access_token:${userId}:${deviceId}`,
         newAccessToken,
-        900 // 15 minutes
+        24*60*60*1000 
       );
 
       return { access_token: newAccessToken };
