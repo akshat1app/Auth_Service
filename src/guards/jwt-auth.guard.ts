@@ -30,7 +30,7 @@ import { JwtService } from '@nestjs/jwt';
         );
       }
   
-      const token = accessToken.startsWith('Bearer ')
+      const token = accessToken.startsWith('Body')
         ? accessToken.slice(7)
         : accessToken;
   

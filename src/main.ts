@@ -4,13 +4,13 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import mongoose from 'mongoose';
 import * as dotenv from 'dotenv';
-
 dotenv.config();
+
 
 async function bootstrap() {
   try {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/auth');
-    console.log(`Connected to MongoDB: ${process.env.MONGO_URI}`);
+    await mongoose.connect(process.env.MONGO_URI as string);
+    //console.log(`Connected to MongoDB: ${process.env.MONGO_URI}`);
 
     const grpcApp = await NestFactory.createMicroservice<MicroserviceOptions>(AuthModule, {
       transport: Transport.GRPC,

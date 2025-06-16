@@ -57,7 +57,7 @@ export class AuthService {
       console.log(access_token, refresh_token);
 
       if(payload.role=='user'){
-      await this.sessionModel.create({
+      await this.adminModel.create({
         refreshToken: refresh_token,
         userId: payload.userId,
         deviceId: payload.deviceId,
