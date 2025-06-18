@@ -57,8 +57,7 @@ export class AuthService {
       console.log(access_token, refresh_token);
 
       if (payload.role == 'user') {
-        const alreadyLoggedIn = await this.sessionModel.find({userId: payload.userId, deviceId: payload.deviceId, status:'active'})
-        if(!alreadyLoggedIn){
+        
           await this.sessionModel.create({
             refreshToken: refresh_token,
             userId: payload.userId,
@@ -66,18 +65,17 @@ export class AuthService {
             status: 'active',
             fcmToken: payload.fcmToken,
           });
-        }
+        
         
 
         await this.redisService.set(
           `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
           access_token,
-          24*60*60*1000,
+          24 * 60 * 60,
         );
       }
       else if (payload.role == 'admin') {
-        const alreadyLoggedIn = await this.AdminSessionModel.find({ userId: payload.userId, deviceId: payload.deviceId, status: 'active' })
-        if (!alreadyLoggedIn) {
+        
           await this.AdminSessionModel.create({
             refreshToken: refresh_token,
             adminId: payload.userId,
@@ -86,13 +84,13 @@ export class AuthService {
             fcmToken: payload.fcmToken,
 
           });
-        }
+        
 
 
         await this.redisService.set(
           `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
           access_token,
-          24*60*60*1000,
+          24 * 60 * 60,
         );
       }
 
@@ -239,7 +237,7 @@ export class AuthService {
           deviceId,
         },
         {
-          expiresIn: '1d',
+          expiresIn: "1d",
           subject: userId,
         }
       );
@@ -247,7 +245,7 @@ export class AuthService {
       await this.redisService.set(
         `access_token:${userId}:${deviceId}`,
         newAccessToken,
-        24*60*60*1000 
+        24 * 60 * 60
       );
 
       return { access_token: newAccessToken };

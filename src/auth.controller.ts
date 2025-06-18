@@ -32,9 +32,9 @@ export class AuthController {
 
 
   @GrpcMethod('AuthService', 'Logout')
-async logout(data: { userId: string , deviceId: string}) {
-  return this.authService.logout(data.userId, data.deviceId);
-}
+  async logout(data: { userId: string , deviceId: string}) {
+    return this.authService.logout(data.userId, data.deviceId);
+  }
 
 
   @GrpcMethod('AuthService', 'GoogleSignup')
