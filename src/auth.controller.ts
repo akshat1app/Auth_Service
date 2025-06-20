@@ -32,21 +32,21 @@ export class AuthController {
 
 
   @GrpcMethod('AuthService', 'Logout')
-  async logout(data: { userId: string , deviceId: string}) {
-    return this.authService.logout(data.userId, data.deviceId);
-  }
+async logout(data: { userId: string , deviceId: string, role: string}) {
+  return this.authService.logout(data.userId, data.deviceId, data.role);
+}
 
 
-  @GrpcMethod('AuthService', 'GoogleSignup')
-  async googleSignup(data:{googleToken:string, deviceId:string}) {
-    const user = await this.authService.googleSignup(data.googleToken, data.deviceId);
-    return {
-      access_token: user.access_token,
-      refresh_token: user.refresh_token,
-      email: user.email,
-      name: user.name,
-    };
-  }
+  // @GrpcMethod('AuthService', 'GoogleSignup')
+  // async googleSignup(data:{googleToken:string, deviceId:string}) {
+  //   const user = await this.authService.googleSignup(data.googleToken, data.deviceId);
+  //   return {
+  //     access_token: user.access_token,
+  //     refresh_token: user.refresh_token,
+  //     email: user.email,
+  //     name: user.name,
+  //   };
+  // }
   @GrpcMethod('AuthService', 'RegenerateAccessToken')
   async regenerateAccessToken(data: { userId: string; refreshToken: string; deviceId?: string }) {
     const { userId, refreshToken, deviceId } = data;
@@ -62,3 +62,4 @@ export class AuthController {
   }
   
 }
+

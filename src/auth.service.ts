@@ -3,19 +3,19 @@ import { JwtService } from "@nestjs/jwt";
 import { Model, Types } from "mongoose";
 import { UserSession } from "./schema/user-session.schema";
 import { InjectModel } from "@nestjs/mongoose";
-import { OAuth2Client } from 'google-auth-library';
+import { OAuth2Client } from "google-auth-library";
 import { RedisService } from "./redis/redis.service";
 import { RpcException } from "@nestjs/microservices";
 import { AdminSession } from "./schema/admin-session.schema";
-import { v4 as uuidv4 } from 'uuid';
-import { status } from '@grpc/grpc-js';
-
-
+import { v4 as uuidv4 } from "uuid";
+import { status } from "@grpc/grpc-js";
+import { platform } from "os";
 
 interface ValidateTokenResponse {
   userId: string;
   email: string;
   role: string;
+  deviceId: string;
   issuedAt: number;
   expiresAt: number;
 }
@@ -27,7 +27,8 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly redisService: RedisService,
     @InjectModel(UserSession.name) private sessionModel: Model<UserSession>,
-    @InjectModel(AdminSession.name) private AdminSessionModel: Model<AdminSession>
+    @InjectModel(AdminSession.name)
+    private AdminSessionModel: Model<AdminSession>
   ) {
     this.oauth2Client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
   }
@@ -36,14 +37,13 @@ export class AuthService {
     userId: string;
     email: string;
     role: string;
-    deviceId?: string;
-    ipAddress?: string;
-    userAgent?: string;
-    fcmToken?: string;
-
+    deviceId: string;
+    ipAddress: string;
+    userAgent: string;
+    fcmToken: string;
   }) {
     try {
-      console.log(payload)
+      console.log("plaload:",payload);
       const access_token = this.jwtService.sign(payload, {
         expiresIn: "1d",
         subject: payload.userId,
@@ -52,123 +52,146 @@ export class AuthService {
       const refresh_token = this.jwtService.sign(payload, {
         expiresIn: "7d",
         subject: payload.userId,
-
       });
       console.log(access_token, refresh_token);
 
-      if (payload.role == 'user') {
-        
+      if (payload.role == "user") {
+        const existingUser = await this.sessionModel.findOne({
+          userId: payload.userId,
+          deviceId: payload.deviceId,
+          status: "active",
+        });
+
+        if (!existingUser) {
+          console.log("session: ", payload);
           await this.sessionModel.create({
             refreshToken: refresh_token,
             userId: payload.userId,
             deviceId: payload.deviceId,
-            status: 'active',
+            status: "active",
             fcmToken: payload.fcmToken,
+            ipAddress: payload.ipAddress,
+            userAgent: payload.userAgent,
           });
-        
-        
 
-        await this.redisService.set(
-          `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
-          access_token,
-          24 * 60 * 60,
-        );
+          await this.redisService.set(
+            `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
+            access_token,
+            24 * 60 * 60
+          );
+        } else {
+          await this.redisService.del(
+            `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`
+          );
+          await this.redisService.set(
+            `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
+            access_token,
+            24 * 60 * 60
+          );
+        }
       }
-      else if (payload.role == 'admin') {
-        
-          await this.AdminSessionModel.create({
-            refreshToken: refresh_token,
-            adminId: payload.userId,
-            deviceId: payload.deviceId,
-            status: 'active',
-            fcmToken: payload.fcmToken,
 
-          });
-        
-
+      if (payload.role == "admin") {
+        await this.AdminSessionModel.create({
+          refreshToken: refresh_token,
+          adminId: payload.userId,
+          deviceId: payload.deviceId,
+          status: "active",
+          fcmToken: payload.fcmToken,
+        });
 
         await this.redisService.set(
           `access_token:${payload.role}:${payload.userId}:${payload.deviceId}`,
           access_token,
-          24 * 60 * 60,
+          24 * 60 * 60
         );
       }
 
       const response = { access_token, refresh_token };
-      console.log(response)
+      console.log(response);
       return response;
     } catch (err) {
-      console.error('[GenerateToken] Internal Error:', err);
+      console.error("[GenerateToken] Internal Error:", err);
       throw err;
     }
   }
 
-
-
-  async validateToken(request: { access_token: string }): Promise<ValidateTokenResponse> {
+  async validateToken(request: {
+    access_token: string;
+  }): Promise<ValidateTokenResponse> {
     try {
-      console.log('Validating token:', request.access_token);
+      console.log("Validating token:", request.access_token);
 
+      const token = request.access_token.startsWith("Bearer ")
+        ? request.access_token.slice(7)
+        : request.access_token;
 
-      const token = request.access_token.startsWith('Bearer ') ? request.access_token.slice(7) : request.access_token;
-
-      const decoded = this.jwtService.verify(token, { secret: process.env.JWT_SECRET });
-      console.log('Token decoded successfully:', decoded);
-      console.log('Decoded token payload:', {
+      const decoded = this.jwtService.verify(token, {
+        secret: process.env.JWT_SECRET,
+      });
+      console.log("Token decoded successfully:", decoded);
+      console.log("Decoded token payload:", {
         userId: decoded.userId,
         deviceId: decoded.deviceId,
         email: decoded.email,
-        role: decoded.role
+        role: decoded.role,
       });
 
       const userId = decoded.userId;
       const deviceId = decoded.deviceId;
 
       if (!userId || !deviceId) {
-        console.error('Token validation failed: Missing userId or deviceId', { userId, deviceId });
+        console.error("Token validation failed: Missing userId or deviceId", {
+          userId,
+          deviceId,
+        });
         throw new RpcException({
           code: status.INVALID_ARGUMENT,
-          message: 'Missing userId or deviceId in token'
+          message: "Missing userId or deviceId in token",
         });
       }
 
-      const redisKey = `access_token:${decoded.role}:${userId}:${deviceId}`;
+      const redisKey =`access_token:${decoded.role}:${userId}:${deviceId}`;
       const storedToken = await this.redisService.get(redisKey);
 
       if (!storedToken) {
-        console.error('Token not found in Redis. Possibly expired or logged out.', { redisKey });
+        console.error(
+          "Token not found in Redis. Possibly expired or logged out.",
+          { redisKey }
+        );
         throw new RpcException({
           code: status.UNAUTHENTICATED,
-          message: 'Access token not active or expired (Redis)',
+          message: "Access token not active or expired (Redis)",
         });
       }
 
       if (storedToken !== token) {
-        console.error('Access token mismatch in Redis', { expected: storedToken, got: token });
+        console.error("Access token mismatch in Redis", {
+          expected: storedToken,
+          got: token,
+        });
         throw new RpcException({
           code: status.UNAUTHENTICATED,
-          message: 'Access token mismatch',
+          message: "Access token mismatch",
         });
       }
-
-
 
       const session = await this.sessionModel.findOne({
         userId,
         deviceId,
-        status: 'active',
-
-
-
+        status: "active",
       });
 
-      console.log('Found session:', session);
+      console.log("Found session:", session);
 
       if (!session) {
-        console.error('Token validation failed: No active session found', { userId, deviceId });
+        console.error("Token validation failed: No active session found", {
+          userId,
+          deviceId,
+        });
         throw new RpcException({
           code: status.UNAUTHENTICATED,
-          message: 'Session inactive or device mismatch'
+          message: "Session inactive or device mismatch",
         });
       }
 
@@ -176,31 +199,33 @@ export class AuthService {
         userId,
         email: decoded.email,
         role: decoded.role,
+        deviceId: decoded.deviceId,
         issuedAt: decoded.iat,
-        expiresAt: decoded.exp
+        expiresAt: decoded.exp,
       };
     } catch (err) {
-      console.error('Token validation failed:', err);
+      console.error("Token validation failed:", err);
       if (err instanceof RpcException) {
         throw err;
       }
       throw new RpcException({
         code: status.UNAUTHENTICATED,
-        message: 'Invalid or expired token'
+        message: "Invalid or expired token",
       });
     }
   }
 
-
-
-
-
-  async saveUserSession(userId: string, refreshToken: string, deviceId: string, fcmToken?: string) {
+  async saveUserSession(
+    userId: string,
+    refreshToken: string,
+    deviceId: string,
+    fcmToken?: string
+  ) {
     const session = new this.sessionModel({
       userId,
       refreshToken,
       deviceId,
-      status: 'active',
+      status: "active",
       fcmToken,
     });
 
@@ -224,7 +249,7 @@ export class AuthService {
       });
 
       if (!session) {
-        throw new UnauthorizedException('Invalid or expired refresh token');
+        throw new UnauthorizedException("Invalid or expired refresh token");
       }
 
       const decoded = this.jwtService.verify(refreshToken);
@@ -243,82 +268,75 @@ export class AuthService {
       );
 
       await this.redisService.set(
-        `access_token:${userId}:${deviceId}`,
+       ` access_token:${userId}:${deviceId}`,
         newAccessToken,
         24 * 60 * 60
       );
 
       return { access_token: newAccessToken };
     } catch (err) {
-      console.error('[regenerateAccessToken] Error:', err);
-      throw new UnauthorizedException('Token regeneration failed');
+      console.error("[regenerateAccessToken] Error:", err);
+      throw new UnauthorizedException("Token regeneration failed");
     }
   }
 
-  async googleSignup(googleToken: string, deviceId: string) {
-    const ticket = await this.oauth2Client.verifyIdToken({
-      idToken: googleToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+  // async googleSignup(googleToken: string, deviceId: string) {
+  //   const ticket = await this.oauth2Client.verifyIdToken({
+  //     idToken: googleToken,
+  //     audience: process.env.GOOGLE_CLIENT_ID,
+  //   });
 
-    const payload = ticket.getPayload();
+  //   const payload = ticket.getPayload();
 
+  //   if (!payload) {
+  //     throw new Error("Failed to verify Google token: Payload is undefined");
+  //   }
 
-    if (!payload) {
-      throw new Error('Failed to verify Google token: Payload is undefined');
-    }
+  //   const userId = payload.sub;
+  //   const email = payload.email;
+  //   const name = payload.name;
 
+  //   if (!userId || !email || !name) {
+  //     throw new Error(
+  //       "Missing required user information in Google token payload"
+  //     );
+  //   }
 
-    const userId = payload.sub;
-    const email = payload.email;
-    const name = payload.name;
+  //   const tokens = await this.generateToken({ userId, email, role: "user" });
 
+  //   await this.saveUserSession(userId, tokens.refresh_token, deviceId);
 
-    if (!userId || !email || !name) {
-      throw new Error('Missing required user information in Google token payload');
-    }
+  //   return {
+  //     ...tokens,
+  //     email,
+  //     name,
+  //   };
+  // }
 
-
-    const tokens = await this.generateToken({ userId, email, role: 'user' });
-
-
-    await this.saveUserSession(userId, tokens.refresh_token, deviceId);
-
-    return {
-      ...tokens,
-      email,
-      name,
-    };
-
-  }
-
-  async logout(userId: string, deviceId: string) {
+  async logout(userId: string, deviceId: string, role: string) {
     try {
-
-      await this.redisService.del(`access_token:${userId}:${deviceId}`);
-
+      await this.redisService.del(`access_token:${role}:${userId}:${deviceId}`);
 
       const session = await this.sessionModel.findOneAndUpdate(
-        { userId, deviceId, status: 'active' },
-        { status: 'inactive' },
+        { userId, deviceId, status: "active" },
+        { status: "inactive" },
         { new: true }
       );
 
       if (!session) {
         throw new RpcException({
           code: 16,
-          message: 'Session not found or already inactive',
+          message: "Session not found or already inactive",
         });
       }
 
-      return { message: 'Logout successful' };
+      return { message: "Logout successful" };
     } catch (error) {
-      console.error('[AuthService Logout Error]', error);
+      console.error("[AuthService Logout Error]", error);
       throw new RpcException({
         code: 13,
-        message: 'Logout failed',
+        message: "Logout failed",
       });
     }
   }
-
 }

@@ -11,21 +11,21 @@ export class GenerateTokenDto {
     @IsString()
     role!: string;
 
-    @IsOptional()
+    // @IsOptional()
     @IsString()
-    deviceId?: string;
+    deviceId!: string;
 
-    @IsOptional()
+    // @IsOptional()
     @IsString()
-    ipAddress?: string;
+    ipAddress!: string;
 
-    @IsOptional()
+    // @IsOptional()
     @IsString()
-    userAgent?: string;
+    userAgent!: string;
 
-    @IsOptional()
+    // @IsOptional()
     @IsString()
-    fcmToken?:string;
+    fcmToken!:string;
 }
 
     
